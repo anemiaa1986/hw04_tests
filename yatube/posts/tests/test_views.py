@@ -13,12 +13,12 @@ class PostPagesTests(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.group = Group.objects.create(
-                        title="Тестовая группа",
-                        slug="test-slug",
+            title="Тестовая группа",
+            slug="test-slug",
         )
         cls.group3 = Group.objects.create(
-                        title="Тестовая группа 3",
-                        slug="test-slug3",
+            title="Тестовая группа 3",
+            slug="test-slug3",
         )
 
     def setUp(self):
