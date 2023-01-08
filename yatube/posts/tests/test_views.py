@@ -17,7 +17,7 @@ class PostPagesTests(TestCase):
                         slug="test-slug",
         )
         cls.group3 = Group.objects.create(
-                        title="Тестовая группа3",
+                        title="Тестовая группа 3",
                         slug="test-slug3",
         )
 

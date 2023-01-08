@@ -10,8 +10,8 @@ class PostURLTests(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.group = Group.objects.create(
-                        title="Тестовая группа",
-                        slug="test-slug",
+            title="Тестовая группа",
+            slug="test-slug",
         )
 
     def setUp(self):
