@@ -1,0 +1,16 @@
+<!DOCTYPE html> 
+<html lang="ru">        
+{% load static %}
+<link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">   
+    {% include 'includes/head.html' %}
+  <body>       
+     {% include 'includes/header.html' %}
+     {% block title %} {% endblock %}
+    <main>
+      {% block content %}
+        Надеюсь дальше будет проще...
+      {% endblock %}
+    </main>
+      {% include 'includes/footer.html' %}
+  </body>
+</html> 
