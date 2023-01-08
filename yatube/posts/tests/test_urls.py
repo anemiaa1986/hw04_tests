@@ -12,7 +12,7 @@ class PostURLTests(TestCase):
         cls.group = Group.objects.create(
             title="Тестовая группа",
             slug="test-slug",
-        )
+            )
 
     def setUp(self):
         self.guest_client = Client()
@@ -22,7 +22,7 @@ class PostURLTests(TestCase):
         self.post = Post.objects.create(
             text="Тестовый текст",
             author=self.user
-        )
+            )
 
     def test_urls_uses_correct_template(self):
         """URL-адрес использует соответствующий шаблон."""
