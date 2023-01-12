@@ -44,7 +44,7 @@ class PostFormTest(TestCase):
         Post.objects.filter(
             id=self.post.pk,
             text=self.post.text,
-            )
+        )
         self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertEqual(posts_count + 1, Post.objects.count())
         self.assertEqual(form_data['text'], self.post.text)

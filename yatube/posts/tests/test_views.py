@@ -210,7 +210,7 @@ class PaginatorViewsTest(TestCase):
                 response = self.authorized_client.get(
                     reverse_name,
                     {'page': page}
-                    )
+                )
                 self.assertEqual(
                     len(response.context['page_obj']), 3
                 )
