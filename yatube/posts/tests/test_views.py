@@ -206,7 +206,11 @@ class PaginatorViewsTest(TestCase):
 
         for reverse_name, _ in templates_pages_names.items():
             with self.subTest(reverse_name=reverse_name):
-                response = self.authorized_client.get(reverse_name + '?page=2')
+                page = 2
+                response = self.authorized_client.get(
+                    reverse_name,
+                    {'page': page}
+                    )
                 self.assertEqual(
                     len(response.context['page_obj']), 3
                 )

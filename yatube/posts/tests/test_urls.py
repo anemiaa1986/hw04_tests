@@ -1,6 +1,7 @@
 from django.test import TestCase, Client
 from django.contrib.auth import get_user_model
 from ..models import Group, Post
+from django.urls import reverse
 
 User = get_user_model()
 
@@ -27,12 +28,24 @@ class PostURLTests(TestCase):
     def test_urls_uses_correct_template(self):
         """URL-адрес использует соответствующий шаблон."""
         templates_url_names = {
-            "/": "posts/index.html",
-            "/create/": "posts/create_post.html",
-            f"/group/{PostURLTests.group.slug}/": "posts/group_list.html",
-            f"/profile/{self.user}/": "posts/profile.html",
-            f"/posts/{int(self.post.pk)}/": "posts/post_detail.html",
-            f"/posts/{int(self.post.pk)}/edit/": "posts/create_post.html",
+            reverse('posts:index'): "posts/index.html",
+            reverse(
+                'posts:group_list',
+                kwargs={'slug': PostURLTests.group.slug}
+            ): "posts/group_list.html",
+            reverse('posts:post_create'): "posts/create_post.html",
+            reverse(
+                'posts:profile',
+                kwargs={'username': self.user}
+            ): "posts/profile.html",
+            reverse(
+                'posts:post_detail',
+                kwargs={'post_id': self.post.pk}
+            ): "posts/post_detail.html",
+            reverse(
+                'posts:post_edit',
+                kwargs={'post_id': self.post.pk}
+            ): "posts/create_post.html",
         }
         for address, template in templates_url_names.items():
             with self.subTest(address=address):
