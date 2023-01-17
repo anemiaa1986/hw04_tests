@@ -1,13 +1,19 @@
-from django.test import TestCase, Client
+import shutil
+import tempfile
+from django.test import TestCase, Client, override_settings
 from django.contrib.auth import get_user_model
-from ..models import Group, Post
+from posts.models import Comment, Follow, Group, Post
 from django.urls import reverse
 from django.core.cache import cache
 from django import forms
+from django.conf import settings
+from django.core.files.uploadedfile import SimpleUploadedFile
 
 User = get_user_model()
+TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class PostPagesTests(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -20,6 +26,24 @@ class PostPagesTests(TestCase):
             title="Тестовая группа 3",
             slug="test-slug3",
         )
+        cls.small_gif = (
+            b'\x47\x49\x46\x38\x39\x61\x02\x00'
+            b'\x01\x00\x80\x00\x00\x00\x00\x00'
+            b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
+            b'\x00\x00\x00\x2C\x00\x00\x00\x00'
+            b'\x02\x00\x01\x00\x00\x02\x02\x0C'
+            b'\x0A\x00\x3B'
+        )
+        cls.uploaded = SimpleUploadedFile(
+            name='small.gif',
+            content=cls.small_gif,
+            content_type='image/gif'
+        )
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
 
     def setUp(self):
         self.user = User.objects.create_user(username="HasNoName")
@@ -61,7 +85,7 @@ class PostPagesTests(TestCase):
                 self.assertTemplateUsed(response, template)
 
     def test_index_page_show_correct_context(self):
-        """Шаблон index сформирован с правильным контекстом."""
+        """Шаблон index сформирован с корректным контекстом."""
         response = self.authorized_client.get(reverse('posts:index'))
         first_object = response.context['page_obj'][0]
         post_text_0 = first_object.text
@@ -72,7 +96,7 @@ class PostPagesTests(TestCase):
         self.assertEqual(post_author_0, self.user)
 
     def test_group_page_show_correct_context(self):
-        """Шаблон group_list сформирован с правильным контекстом"""
+        """Шаблон group_list сформирован с корректным контекстом"""
         response = self.authorized_client.get(
             reverse('posts:group_list', kwargs={'slug': self.group.slug})
         )
@@ -214,3 +238,139 @@ class PaginatorViewsTest(TestCase):
                 self.assertEqual(
                     len(response.context['page_obj']), 3
                 )
+
+
+class CommentViewsTest(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.author = User.objects.create(username='HasNoName')
+        cls.group = Group.objects.create(
+            title='Тестовое название',
+            slug='test-slug',
+            description='Тестовое описание группы'
+        )
+        cls.post = Post.objects.create(
+            text='Тестовый текст',
+            author=cls.author,
+            group=cls.group
+        )
+        cls.comment = Comment.objects.create(
+            author=cls.author,
+            text='Тестовый коммент',
+            post=cls.post
+        )
+
+    def setUp(self):
+        self.authorized_client = Client()
+        self.authorized_client.force_login(self.author)
+
+    def test_comment_view(self):
+        """Шаблон post_detail показывает новый коммент."""
+        response = self.authorized_client.get(
+            reverse(
+                'posts:post_detail',
+                kwargs={'post_id': f'{CommentViewsTest.post.pk}'}
+            )
+        )
+        first_object = response.context.get('comments')[0]
+        comment_post_0 = first_object
+        self.assertEqual(comment_post_0, CommentViewsTest.comment)
+
+
+class CacheViewsTest(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.author = User.objects.create(username='HasNoName')
+        cls.group = Group.objects.create(
+            title='Тестовое название',
+            slug='test-slug',
+            description='Тестовое описание группы'
+        )
+        cls.post = Post.objects.create(
+            text='Тестовый текст',
+            author=cls.author,
+            group=cls.group
+        )
+
+    def setUp(self):
+        self.authorized_client = Client()
+        self.authorized_client.force_login(self.author)
+
+    def test_cach(self):
+        """Проверяем кэш на главной."""
+        response = self.authorized_client.get(
+            reverse('posts:index')
+        )
+        content_post = response.content
+        Post.objects.filter(id=self.post.id).delete()
+        response = self.authorized_client.get(
+            reverse('posts:index')
+        )
+        self.assertEqual(content_post, response.content)
+        cache.clear()
+        response = self.authorized_client.get(
+            reverse('posts:index')
+        )
+        self.assertNotEqual(content_post, response.content)
+
+
+class FollowViewsTest(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.author = User.objects.create(username='HasNoName')
+        cls.group = Group.objects.create(
+            title='Тестовое название',
+            slug='test-slug',
+            description='Тестовое описание группы'
+        )
+        cls.post = Post.objects.create(
+            text='Тестовый текст',
+            author=cls.author,
+            group=cls.group
+        )
+
+    def setUp(self):
+        self.authorized_client = Client()
+        self.authorized_client.force_login(self.author)
+        self.user1 = User.objects.create_user(username='HasNoName1')
+        self.authorized_client_non_auth1 = Client()
+        self.authorized_client_non_auth1.force_login(self.user1)
+        self.user2 = User.objects.create_user(username='HasNoName2')
+        self.authorized_client_non_auth2 = Client()
+        self.authorized_client_non_auth2.force_login(self.user2)
+
+    def test_follower_view(self):
+        """Проверка новой записи у подписчика."""
+        Follow.objects.create(user=self.user1, author=self.author)
+        post_author = Post.objects.create(
+            text='Тестовый текст новый',
+            author=self.author,
+            group=self.group
+        )
+        response = self.authorized_client_non_auth1.get(
+            reverse('posts:follow_index')
+        )
+        first_object = response.context.get('page_obj').object_list[0]
+        self.assertEqual(first_object, post_author)
+
+    def test_not_follower_view(self):
+        """Обратная  проверка, что не появится."""
+        Follow.objects.create(user=self.user2, author=self.user1)
+        Post.objects.create(
+            text='Тестовый текст новый',
+            author=self.user1,
+            group=self.group
+        )
+        post_author = Post.objects.create(
+            text='Тестовый текст самый новый',
+            author=self.author,
+            group=self.group
+        )
+        response = self.authorized_client_non_auth2.get(
+            reverse('posts:follow_index')
+        )
+        first_object = response.context.get('page_obj').object_list[0]
+        self.assertNotEqual(first_object, post_author)
