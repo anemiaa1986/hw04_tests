@@ -24,19 +24,6 @@ class PostFormTest(TestCase):
             title='test-group',
             slug='test-slug',
         )
-        cls.small_gif = (
-            b'\x47\x49\x46\x38\x39\x61\x02\x00'
-            b'\x01\x00\x80\x00\x00\x00\x00\x00'
-            b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
-            b'\x00\x00\x00\x2C\x00\x00\x00\x00'
-            b'\x02\x00\x01\x00\x00\x02\x02\x0C'
-            b'\x0A\x00\x3B'
-        )
-        cls.uploaded = SimpleUploadedFile(
-            name='small.gif',
-            content=cls.small_gif,
-            content_type='image/gif'
-        )
         cls.post = Post.objects.create(
             text='Тестовый текст, много текста',
             group=cls.group,
@@ -52,10 +39,22 @@ class PostFormTest(TestCase):
         """при отправке валидной формы со страницы создания поста
         reverse('posts:create_post') создаётся новая запись в базе данных"""
         posts_count = Post.objects.count()
+        small_gif = (
+            b"\x47\x49\x46\x38\x39\x61\x02\x00"
+            b"\x01\x00\x80\x00\x00\x00\x00\x00"
+            b"\xFF\xFF\xFF\x21\xF9\x04\x00\x00"
+            b"\x00\x00\x00\x2C\x00\x00\x00\x00"
+            b"\x02\x00\x01\x00\x00\x02\x02\x0C"
+            b"\x0A\x00\x3B"
+        )
+        uploaded = SimpleUploadedFile(
+            name="small.gif", content=small_gif, content_type="image/gif"
+        )
         form_data = {
             'text': 'Тестовый текст, много текста',
             'group': self.group.pk,
             'author': self.user,
+            'image': uploaded,
         }
 
         response = self.authorized_client.post(
@@ -63,16 +62,16 @@ class PostFormTest(TestCase):
             data=form_data,
             follow=True,
         )
-
-        Post.objects.filter(
-            id=self.post.pk,
-            text=self.post.text,
-        )
         self.assertEqual(response.status_code, HTTPStatus.OK)
-        self.assertEqual(posts_count + 1, Post.objects.count())
-        self.assertEqual(form_data['text'], self.post.text)
-        self.assertEqual(self.user, self.post.author)
-        self.assertEqual(self.post.group, self.post.group)
+        self.assertEqual(Post.objects.count(), posts_count + 1)
+        self.assertTrue(
+            Post.objects.filter(
+                text=form_data['text'],
+                author=self.user,
+                group=self.group.pk,
+                image='posts/small.gif'
+            ).exists()
+        )
 
     def test_doing_post_edit(self):
         """при отправке валидной формы со страницы редактирования поста
@@ -115,7 +114,7 @@ class CommentCreateFormTests(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.author = User.objects.create(username='userposts')
+        cls.author = User.objects.create(username='HasNoName')
         cls.group = Group.objects.create(
             title='Тестовое название',
             slug='test-slug',
@@ -151,7 +150,7 @@ class CommentCreateFormTests(TestCase):
             reverse(
                 'posts:post_detail',
                 kwargs={
-                    'post_id': CommentCreateFormTests.post.id
+                    'post_id': CommentCreateFormTests.post.pk
                 }
             )
         )
